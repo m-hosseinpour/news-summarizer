@@ -1,5 +1,6 @@
 import time
 
+from bale_bot_message_sender import send_message
 from model import NewsPost, NewsCategory
 from news_collector import fetch_new_posts
 from news_summarizer import summarize_news_posts
@@ -32,7 +33,8 @@ def summarize_in_batches(news_posts: list[NewsPost]):
 
 
 def send_summary_list(summary_list: list[str]):
-    pass
+    for summary in summary_list:
+        send_message(summary)
 
 
 def monitor_channel():

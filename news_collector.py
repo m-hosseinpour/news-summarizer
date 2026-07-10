@@ -31,28 +31,26 @@ def setup_selenium_driver():
 
 def normalize_news_text(text: str):
     normalized_text = text.replace("@Akharinkhabar\n|\nakharinkhabar.ir", "")
-    normalized_text = text.replace("@Akharinkhabar", "")
-    normalized_text = text.replace("akharinkhabar.ir", "")
-    normalized_text = text.replace(" | ", "")
-    return normalized_text
+    normalized_text = normalized_text.replace("@Akharinkhabar", "")
+    normalized_text = normalized_text.replace("akharinkhabar.ir", "")
+    normalized_text = normalized_text.replace(" | ", "")
+    return normalized_text.strip()
 
 
-def parse_messages(html: str, parsed_sids: set[str]):
+def parse_messages(html: str, seen_sids: list[str]):
     soup = BeautifulSoup(html, 'html.parser')
     messages = soup.find_all(
         'div', class_=lambda x: x and x.startswith('MessageItem_messageWrapper')
     )
-    messages = reversed(messages)
 
-    news_posts: list[NewsPost] = []
     for msg in messages:
         sid = msg.get('data-sid')
-        if not sid or sid in parsed_sids:
+        if not sid or sid in seen_sids:
             continue
 
         text_elem = msg.find('div', class_=lambda x: x and x.startswith('Text_text'))
         text = text_elem.get_text(separator='\n', strip=True) if text_elem else ''
-        normalized_text = normalize_news_text(text.strip())
+        normalized_text = normalize_news_text(text)
 
         new_post = NewsPost(sid=sid, text=normalized_text, category=classify_news(normalized_text))
         print('─' * 30 + ' NEW-POST ' + '─' * 30)
@@ -60,9 +58,7 @@ def parse_messages(html: str, parsed_sids: set[str]):
         print(new_post.text[:200])
         print(f"🆔 {new_post.sid}")
 
-        news_posts.append(new_post)
-        parsed_sids.add(sid)
-    return news_posts
+        yield new_post
 
 
 def scroll_and_collect(seen_sids: list[str]):
@@ -70,33 +66,23 @@ def scroll_and_collect(seen_sids: list[str]):
         By.CSS_SELECTOR, "div[class*='ChatWrapper_scrollListWrapper']"
     )
 
-    parsed_sids = set()
     for i in range(MAX_SCROLLS):
-        news_posts = parse_messages(selenium_driver.page_source, parsed_sids)
-
-        # اگر یکی از پیام‌های قبلی توی صفحه دیده شد، کافیه
-        if seen_sids and any(p.sid in seen_sids for p in news_posts):
-            print(f"  ✓ به آخرین پیام قبلی رسیدیم (بعد از {i} اسکرول)")
-            return news_posts
-
-        # اسکرول به بالای لیست برای لود پیام‌های قدیمی‌تر
-        prev_height = selenium_driver.execute_script(
-            "return arguments[0].scrollHeight;", scroller
+        soup = BeautifulSoup(selenium_driver.page_source, 'html.parser')
+        top_message = soup.find(
+            'div', class_=lambda x: x and x.startswith('MessageItem_messageWrapper')
         )
+        top_message_sid = top_message.get('data-sid') if top_message else None
+        if top_message_sid and seen_sids and top_message_sid in seen_sids:
+            print(f"  ✓ به آخرین پیام قبلی رسیدیم (بعد از {i} اسکرول)")
+            break
+
         selenium_driver.execute_script("arguments[0].scrollTop = 0;", scroller)
         time.sleep(SCROLL_PAUSE)
 
-        new_height = selenium_driver.execute_script(
-            "return arguments[0].scrollHeight;", scroller
-        )
+        if i == MAX_SCROLLS - 1:
+            print(f"  ⚠ به سقف {MAX_SCROLLS} اسکرول رسیدیم")
 
-        # اگر ارتفاع تغییری نکرد یعنی پیام قدیمی‌تری وجود نداره
-        if new_height == prev_height:
-            print(f"  ✓ به ابتدای کانال رسیدیم (بعد از {i + 1} اسکرول)")
-            return parse_messages(selenium_driver.page_source, parsed_sids)
-
-    print(f"  ⚠ به سقف {MAX_SCROLLS} اسکرول رسیدیم")
-    return parse_messages(selenium_driver.page_source, parsed_sids)
+    yield from parse_messages(selenium_driver.page_source, seen_sids)
 
 
 def fetch_new_posts(seen_sids: list[str]):
@@ -113,15 +99,7 @@ def fetch_new_posts(seen_sids: list[str]):
         )
         time.sleep(2)  # فرصت برای رندر کامل
 
-        page_posts = scroll_and_collect(seen_sids)
-
-        # فیلتر پست‌های جدید
-        new_posts = [p for p in page_posts if p.sid not in seen_sids]
-
-        if new_posts:
-            print(f"🆕 {len(new_posts)} پست جدید:")
-
-        return reversed(new_posts)
+        yield from scroll_and_collect(seen_sids)
     finally:
         if selenium_driver:
             selenium_driver.quit()

@@ -22,7 +22,7 @@ def summarize_and_send(important_batch: list[NewsPost]):
         post_id = p.sid[:separator_index] + "/" + p.sid[separator_index + 1:]
         summary += BALE_POST_LINK_TEMPLATE.format(post_id=post_id) + "\n"
 
-    print('=' * 40 + ' SUMMARY-TO-SEND ' + '=' * 40)
+    print('=' * 50 + ' SUMMARY-TO-SEND ' + '=' * 50)
     print(summary)
     send_message(summary)
 
@@ -43,21 +43,18 @@ if __name__ == '__main__':
     all_posts: list[NewsPost] = load_posts()
     seen_sids = {p.sid for p in all_posts}
 
-    new_posts = fetch_new_posts(seen_sids)
+    important_batch = []
+    for new_post in fetch_new_posts(seen_sids):
+        if new_post.category and new_post.category in IMPORTANT_CATEGORIES:
+            important_batch.append(new_post)
 
-    if new_posts:
-        important_batch = []
-        for index, new_post in enumerate(new_posts):
-            if new_post.category and new_post.category in IMPORTANT_CATEGORIES:
-                important_batch.append(new_post)
+        if len(important_batch) >= SUMMARIZE_BATCH:
+            summarize_and_send(important_batch)
+            important_batch = []
 
-            if len(important_batch) >= SUMMARIZE_BATCH or (important_batch and index == len(new_posts) - 1):
-                summarize_and_send(important_batch)
-                important_batch = []
+        all_posts.append(new_post)
+        all_posts = all_posts[-1000:]
+        save_posts(all_posts)
 
-            all_posts.append(new_post)
-            all_posts = all_posts[-1000:]
-            save_posts(all_posts)
-
-    else:
-        print("پست جدیدی نیست")
+    if important_batch:
+        summarize_and_send(important_batch)

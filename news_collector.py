@@ -37,7 +37,7 @@ def normalize_news_text(text: str):
     return normalized_text
 
 
-def parse_messages(html: str):
+def parse_messages(html: str, parsed_sids: set[str]):
     soup = BeautifulSoup(html, 'html.parser')
     messages = soup.find_all(
         'div', class_=lambda x: x and x.startswith('MessageItem_messageWrapper')
@@ -47,7 +47,7 @@ def parse_messages(html: str):
     news_posts: list[NewsPost] = []
     for msg in messages:
         sid = msg.get('data-sid')
-        if not sid:
+        if not sid or sid in parsed_sids:
             continue
 
         text_elem = msg.find('div', class_=lambda x: x and x.startswith('Text_text'))
@@ -61,6 +61,7 @@ def parse_messages(html: str):
         print(f"🆔 {new_post.sid}")
 
         news_posts.append(new_post)
+        parsed_sids.add(sid)
     return news_posts
 
 
@@ -69,8 +70,9 @@ def scroll_and_collect(seen_sids: list[str]):
         By.CSS_SELECTOR, "div[class*='ChatWrapper_scrollListWrapper']"
     )
 
+    parsed_sids = set()
     for i in range(MAX_SCROLLS):
-        news_posts = parse_messages(selenium_driver.page_source)
+        news_posts = parse_messages(selenium_driver.page_source, parsed_sids)
 
         # اگر یکی از پیام‌های قبلی توی صفحه دیده شد، کافیه
         if seen_sids and any(p.sid in seen_sids for p in news_posts):
@@ -91,10 +93,10 @@ def scroll_and_collect(seen_sids: list[str]):
         # اگر ارتفاع تغییری نکرد یعنی پیام قدیمی‌تری وجود نداره
         if new_height == prev_height:
             print(f"  ✓ به ابتدای کانال رسیدیم (بعد از {i + 1} اسکرول)")
-            return parse_messages(selenium_driver.page_source)
+            return parse_messages(selenium_driver.page_source, parsed_sids)
 
     print(f"  ⚠ به سقف {MAX_SCROLLS} اسکرول رسیدیم")
-    return parse_messages(selenium_driver.page_source)
+    return parse_messages(selenium_driver.page_source, parsed_sids)
 
 
 def fetch_new_posts(seen_sids: list[str]):

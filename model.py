@@ -28,4 +28,4 @@ class NewsPost(BaseModel):
         try:
             return NewsCategory(v)
         except ValueError:
-            return NewsCategory.UNKNOWN
+            return None

@@ -32,7 +32,8 @@ def summarize_news_posts(news_text: str) -> NewsCategory | None:
         )
         return response.choices[0].message.content.strip()
     except Exception as e:
-        return f"خطا در ارتباط با مدل: {e}"
+        print(f"خطا در ارتباط با مدل: {e}")
+        raise e
 
 
 # تست

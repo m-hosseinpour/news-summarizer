@@ -81,7 +81,8 @@ def classify_news(news_text: str) -> NewsCategory | None:
         raw_output = response.choices[0].message.content.strip()
         return _parse_category(raw_output)
     except Exception as e:
-        return f"خطا در ارتباط با مدل: {e}"
+        print(f"خطا در ارتباط با مدل: {e}")
+        raise e
 
 
 def _parse_category(raw_output: str) -> NewsCategory:

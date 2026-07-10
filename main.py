@@ -4,6 +4,7 @@ from bale_bot_message_sender import send_message
 from model import NewsPost, NewsCategory
 from news_collector import fetch_new_posts
 from news_summarizer import summarize_news_posts
+from utils import load_posts, save_posts
 
 POLL_INTERVAL = 120  # ثانیه
 SUMMARIZE_BATCH = 3
@@ -12,35 +13,24 @@ IMPORTANT_CATEGORIES: list[NewsCategory] = [NewsCategory.WAR_CONFLICT, NewsCateg
                                             NewsCategory.SCIENCE_TECH, NewsCategory.UNKNOWN]
 
 
-def summarize_in_batches(news_posts: list[NewsPost]):
-    summary_list = []
-    while news_posts:
-        batch = news_posts[:SUMMARIZE_BATCH]
+def summarize_and_send(important_batch: list[NewsPost]):
+    concat_text = "\n\n***\n\n".join([p.text for p in important_batch])
+    summary = summarize_news_posts(concat_text)
+    summary += "\n\n\n"
+    for p in important_batch:
+        separator_index = p.sid.index("-", 1)
+        post_id = p.sid[:separator_index] + "/" + p.sid[separator_index + 1:]
+        summary += BALE_POST_LINK_TEMPLATE.format(post_id=post_id) + "\n"
 
-        concat_text = "\n\n***\n\n".join([p.text for p in batch])
-        summary = summarize_news_posts(concat_text)
-        summary += "\n\n\n"
-        for p in batch:
-            separator_index = p.sid.index("-", 1)
-            post_id = p.sid[:separator_index] + "/" + p.sid[separator_index + 1:]
-            summary += BALE_POST_LINK_TEMPLATE.format(post_id=post_id) + "\n"
-
-        print(summary)
-        print('=' * 50)
-        summary_list.append(summary)
-        news_posts = news_posts[SUMMARIZE_BATCH:]
-    return summary_list
+    print(summary)
+    send_message(summary)
+    print('=' * 80)
 
 
-def send_summary_list(summary_list: list[str]):
-    for summary in summary_list:
-        send_message(summary)
-
-
-def monitor_channel():
+def monitor_channel(seen_sids):
     while True:
         try:
-            fetch_new_posts()
+            fetch_new_posts(seen_sids)
 
         except Exception as e:
             print(f"⚠ خطا: {e}")
@@ -49,7 +39,25 @@ def monitor_channel():
 
 
 if __name__ == '__main__':
-    news_posts = fetch_new_posts()
-    important_posts = [p for p in news_posts if p.category and p.category in IMPORTANT_CATEGORIES]
-    summary_list = summarize_in_batches(important_posts)
-    send_summary_list(summary_list)
+    # خواندن پست‌های قبلی از فایل
+    all_posts: list[NewsPost] = load_posts()
+    seen_sids = {p.sid for p in all_posts}
+
+    new_posts = fetch_new_posts(seen_sids)
+
+    if new_posts:
+        important_batch = []
+        for index, new_post in enumerate(new_posts):
+            if new_post.category and new_post.category in IMPORTANT_CATEGORIES:
+                important_batch.append(new_post)
+
+            if len(important_batch) >= SUMMARIZE_BATCH or (important_batch and index == len(new_posts) - 1):
+                summarize_and_send(important_batch)
+                important_batch = []
+
+            all_posts.append(new_post)
+            all_posts = all_posts[-1000:]
+            save_posts(all_posts)
+
+    else:
+        print("پست جدیدی نیست")

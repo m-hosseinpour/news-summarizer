@@ -41,19 +41,19 @@ def parse_messages(html):
 
 
 # ---------- خواندن/نوشتن فایل JSON ----------
-def load_posts(filename):
-    if os.path.exists(filename):
+def load_posts():
+    if os.path.exists(POSTS_FILE):
         try:
-            with open(filename, 'r', encoding='utf-8') as f:
+            with open(POSTS_FILE, 'r', encoding='utf-8') as f:
                 return json.load(f)
         except (json.JSONDecodeError, IOError) as e:
             print(f"⚠ خطا در خواندن فایل: {e} — با لیست خالی شروع می‌شود")
     return []
 
 
-def save_posts(filename, posts):
+def save_posts(posts):
     try:
-        with open(filename, 'w', encoding='utf-8') as f:
+        with open(POSTS_FILE, 'w', encoding='utf-8') as f:
             json.dump(posts, f, ensure_ascii=False, indent=2)
     except IOError as e:
         print(f"⚠ خطا در نوشتن فایل: {e}")
@@ -104,61 +104,66 @@ def scroll_and_collect(driver, seen_sids):
     return parse_messages(driver.page_source)
 
 
-# ---------- حلقه اصلی ----------
-def monitor_channel(url, interval=POLL_INTERVAL, filename=POSTS_FILE):
+def fetch_new_posts(driver):
     # خواندن پست‌های قبلی از فایل
-    all_posts = load_posts(filename)
+    all_posts = load_posts()
     seen_sids = {p['sid'] for p in all_posts}
     print(f"📂 {len(all_posts)} پست از فایل بارگذاری شد")
 
-    driver = setup_driver()
+    print(f"\n🔄 بررسی کانال... ({time.strftime('%H:%M:%S')})")
+    driver.get(CHANNEL_URL)
 
+    # صبر تا لود شدن اولین پیام
+    WebDriverWait(driver, 20).until(
+        EC.presence_of_element_located(
+            (By.CSS_SELECTOR, "div[class*='MessageItem_messageWrapper']")
+        )
+    )
+    time.sleep(2)  # فرصت برای رندر کامل
+
+    # اسکرول به عقب تا رسیدن به پیام‌های قبلی
+    page_posts = scroll_and_collect(driver, seen_sids)
+
+    # فیلتر پست‌های جدید
+    new_posts = [p for p in page_posts if p['sid'] not in seen_sids]
+
+    if new_posts:
+        print(f"🆕 {len(new_posts)} پست جدید:")
+        for post in new_posts:
+            seen_sids.add(post['sid'])
+            all_posts.append(post)
+            print('─' * 40)
+            print(post['text'][:200])
+            print(f"🆔 {post['sid']}")
+
+        all_posts = all_posts[-1000:]
+        # ذخیره در فایل (اگر نبود ساخته می‌شود)
+        save_posts(all_posts)
+        print(f"💾 مجموعاً {len(all_posts)} پست ذخیره شد")
+    else:
+        print("پست جدیدی نیست")
+
+    return new_posts
+
+
+# ---------- حلقه اصلی ----------
+def monitor_channel(driver):
     try:
         while True:
             try:
-                print(f"\n🔄 بررسی کانال... ({time.strftime('%H:%M:%S')})")
-                driver.get(url)
-
-                # صبر تا لود شدن اولین پیام
-                WebDriverWait(driver, 20).until(
-                    EC.presence_of_element_located(
-                        (By.CSS_SELECTOR, "div[class*='MessageItem_messageWrapper']")
-                    )
-                )
-                time.sleep(2)  # فرصت برای رندر کامل
-
-                # اسکرول به عقب تا رسیدن به پیام‌های قبلی
-                page_posts = scroll_and_collect(driver, seen_sids)
-
-                # فیلتر پست‌های جدید
-                new_posts = [p for p in page_posts if p['sid'] not in seen_sids]
-
-                if new_posts:
-                    print(f"🆕 {len(new_posts)} پست جدید:")
-                    for post in new_posts:
-                        seen_sids.add(post['sid'])
-                        all_posts.append(post)
-                        print('─' * 40)
-                        print(post['text'][:200])
-                        print(f"🆔 {post['sid']}")
-
-                    # ذخیره در فایل (اگر نبود ساخته می‌شود)
-                    save_posts(filename, all_posts)
-                    print(f"💾 مجموعاً {len(all_posts)} پست ذخیره شد")
-                else:
-                    print("پست جدیدی نیست")
+                fetch_new_posts(driver)
 
             except Exception as e:
                 print(f"⚠ خطا: {e}")
 
-            time.sleep(interval)
+            time.sleep(POLL_INTERVAL)
 
     except KeyboardInterrupt:
-        print("\n⏹ توقف توسط کاربر")
+        pass
     finally:
-        save_posts(filename, all_posts)
         driver.quit()
 
 
 if __name__ == '__main__':
-    monitor_channel(CHANNEL_URL)
+    driver = setup_driver()
+    fetch_new_posts(driver)

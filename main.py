@@ -39,22 +39,23 @@ def monitor_channel(seen_sids):
 
 
 if __name__ == '__main__':
-    # خواندن پست‌های قبلی از فایل
     all_posts: list[NewsPost] = load_posts()
     seen_sids = {p.sid for p in all_posts}
 
     important_batch = []
     for new_post in fetch_new_posts(seen_sids):
+        all_posts.append(new_post)
+        all_posts = all_posts[-1000:]
+
         if new_post.category and new_post.category in IMPORTANT_CATEGORIES:
             important_batch.append(new_post)
 
         if len(important_batch) >= SUMMARIZE_BATCH:
             summarize_and_send(important_batch)
             important_batch = []
-
-        all_posts.append(new_post)
-        all_posts = all_posts[-1000:]
-        save_posts(all_posts)
+            save_posts(all_posts)
 
     if important_batch:
         summarize_and_send(important_batch)
+
+    save_posts(all_posts)

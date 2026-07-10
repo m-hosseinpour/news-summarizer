@@ -4,12 +4,15 @@ from open_ai_client_provider import open_ai_client, OPEN_AI_MODEL_NAME
 
 SYSTEM_PROMPT = """تو یک خلاصه‌ساز حرفه‌ای اخبار فارسی هستی.
 متنی که کاربر می‌فرسته شامل چندین خبر است که پشت سر هم قرار دارند.
+
 وظیفه تو:
-- یک خلاصه مختصر و مفید از همه اخبار بنویس
-- هیچ نکته مهمی رو حذف نکن
-- خروجی برای خواندن سریع مناسب باشه
-- ساده و روان بنویس
-- فقط خلاصه رو بنویس، توضیح اضافه نده"""
+- خروجی به صورت لیست مارکداون باشه
+- هر خبر را در یک پاراگراف خلاصه کن
+- هر خلاصه تا حد ممکن کوتاه باشه و به نکات مهم بسنده کن
+- اگر خبر نقل قول است، منبع یا نام گوینده به همراه مقام او را ذکر کن (مثلاً: «جامه‌گیر، عضو هیئت‌ مدیره تعاونی صیادان پشت‌شهر بندرعباس: ...» یا «رویترز: ...»)
+- اعداد، تاریخ‌ها، اسامی کلیدی و اطلاعات مهم را نگه دار، بقیه جزئیات را حذف کن
+- خبرهای تکراری را در یک مورد ادغام کن (ولی این باعث نشه که خبرهایی به اشتباه نادیده گرفته بشن)
+- هیچ توضیح یا مقدمه اضافه‌ای نده؛ مستقیم لیست را شروع کن"""
 
 
 def summarize_news_posts(news_text: str) -> NewsCategory | None:
@@ -17,17 +20,19 @@ def summarize_news_posts(news_text: str) -> NewsCategory | None:
     if not news_text_strip:
         return None
 
-    response = open_ai_client.chat.completions.create(
-        model=OPEN_AI_MODEL_NAME,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": news_text},
-        ],
-        temperature=0.3,  # کمتر = دقیق‌تر و خلاصه‌تر
-        max_tokens=500,  # حداکثر طول پاسخ
-        timeout=120,  # تایم‌اوت برای CPU ضعیف
-    )
-    return response.choices[0].message.content.strip()
+    try:
+        response = open_ai_client.chat.completions.create(
+            model=OPEN_AI_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": news_text},
+            ],
+            temperature=0.3,  # کمتر = دقیق‌تر و خلاصه‌تر
+            timeout=300,  # تایم‌اوت برای CPU ضعیف
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"خطا در ارتباط با مدل: {e}"
 
 
 # تست

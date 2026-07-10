@@ -6,6 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from model import NewsPost, NewsCategory
 
 from news_classifier import classify_news
 from utils import load_posts, save_posts
@@ -95,7 +96,6 @@ def scroll_and_collect(seen_sids: list[str]):
 
 
 def fetch_new_posts():
-    setup_selenium_driver()
     try:
         # خواندن پست‌های قبلی از فایل
         all_posts: list[NewsPost] = load_posts()
@@ -104,6 +104,8 @@ def fetch_new_posts():
 
         if all_posts:
             return all_posts
+
+        setup_selenium_driver()
 
         print(f"\n🔄 بررسی کانال... ({time.strftime('%H:%M:%S')})")
         selenium_driver.get(CHANNEL_URL)
@@ -141,4 +143,5 @@ def fetch_new_posts():
 
         return new_posts
     finally:
-        selenium_driver.quit()
+        if selenium_driver:
+            selenium_driver.quit()

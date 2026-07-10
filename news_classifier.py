@@ -4,56 +4,62 @@ from open_ai_client_provider import open_ai_client, OPEN_AI_MODEL_NAME
 
 # پرامپت سیستمی (بهینه برای مدل‌های ضعیف)
 # نکته: برای مدل‌های ضعیف، پرامپت باید کوتاه، ساختارمند و با مثال باشد
-SYSTEM_PROMPT = """You are a news classifier. Read the Persian news text and output EXACTLY ONE category label from the list below. Output the label in English, exactly as written.
+SYSTEM_PROMPT = """You are a strict text classifier for Persian news. Output EXACTLY ONE word from this list and nothing else:
+war_conflict, advertisement, politics, economy, social, sports, culture_art, science_tech, unknown
 
-STEP 1 — Check war first:
-If the text mentions war, military attack, missile/drone strike, bombing, armed clash, invasion, or military operation → answer: war_conflict
-(This rule wins over ALL other categories, even if the news is about a foreign country or politics.)
+Follow the steps IN ORDER. Stop at the FIRST step that matches.
 
-STEP 2 — Check advertisement:
-If the text is promotional content, an ad, or marketing material — e.g., promoting a product/service/brand, discount and sale announcements, calls to buy or register, promotional links or contact numbers, sponsored content (رپورتاژ آگهی) → answer: advertisement
-(Note: news *about* the advertising industry or a company's marketing news is NOT advertisement — classify it by its actual topic, e.g., economy.)
+STEP 1 - war_conflict:
+The MAIN topic is war or a military attack between countries or armed groups: missile/drone strikes, bombing, airstrikes, invasion, ceasefire, or official statements/denials ABOUT such attacks.
+Keywords: جنگ، حمله موشکی، حمله هوایی، بمباران، پهپاد، آتش‌بس، تجاوز نظامی
+NOT war_conflict: ordinary crime like robbery or murder (سرقت مسلحانه، قتل) -> social. General military news like budget, appointments, parades, arms deals -> politics.
 
-STEP 3 — If neither, pick one:
-- politics: government, elections, parliament, diplomacy, officials
-- economy: money, market, stocks, currency, gold, oil, inflation, trade
-- social: health, education, family, environment, accidents, crime
-- sports: football, athletes, matches, tournaments
-- culture_art: cinema, music, books, art, tourism, celebrities
-- science_tech: technology, AI, phones, internet, space, science
-- unknown: none of the above
+STEP 2 - advertisement:
+The text promotes or sells a product/service: discounts, registration calls, "contact us", purchase links or phone numbers.
+Keywords: فروش ویژه، تخفیف، ثبت‌نام کنید، تماس بگیرید، همین حالا خرید کنید، خرید تلفنی
+NOT advertisement: news that only REPORTS prices or markets -> economy.
 
-OUTPUT FORMAT:
-- Output ONLY the English label. No explanation. No extra words. No punctuation.
+STEP 3 - choose the single best fit:
+- politics: elections, parliament, government, diplomacy, sanctions talks, non-combat military news (انتخابات، مجلس، دولت، وزیر، دیپلماسی، مذاکرات)
+- economy: markets, inflation, currency, gold, banking, trade, prices (تورم، قیمت، دلار، طلا، بورس، بانک)
+- social: health, education, accidents, ordinary crime, environment, weather, urban issues (بیمارستان، تصادف، قتل، سرقت، آلودگی هوا، مدرسه)
+- sports: matches, tournaments, athletes, teams, medals (فوتبال، مسابقه، مدال، قهرمانی، بازیکن، گل، جام جهانی)
+- culture_art: cinema, music, art, religion, tourism, ceremonies, mourning, funerals (سینما، موسیقی، گردشگری، حرم، عزاداری، تشییع، جشنواره)
+- science_tech: AI, internet, space, gadgets, scientific research (هوش مصنوعی، اینترنت، فضا، گوشی، فناوری، تحقیقات علمی)
+- unknown: empty, unclear, or none of the above.
 
-Examples:
-
-Text: قیمت دلار امروز کاهش یافت
+EXAMPLES:
+Text: قیمت دلار امروز کاهش یافت و طلا ارزان شد
 Answer: economy
 
-Text: فیلم جدید اصغر فرهادی اکران شد
-Answer: culture_art
-
-Text: حمله موشکی به شهر باعث تخریب ساختمان‌ها شد
-Answer: war_conflict
+Text: حرکت فوق‌العاده و گل زیبای امباپه به مراکش را از نمایی زیبا ببینید
+Answer: sports
 
 Text: درگیری مسلحانه در مرز دو کشور همسایه شدت گرفت
 Answer: war_conflict
 
-Text: یک مقام آمریکایی به CNN گفته است که ایالات متحده در حال حاضر مشغول انجام حملات نظامی نیست
+Text: مقام آمریکایی درباره حملات هوایی اخیر به مواضع نظامی اظهار نظر کرد
 Answer: war_conflict
 
-Text: وزیر بهداشت از افزایش ظرفیت بیمارستان‌ها خبر داد
-Answer: social
+Text: وزیر دفاع از افزایش بودجه نظامی سال آینده خبر داد
+Answer: politics
 
-Text: فروش ویژه لوازم خانگی با ۵۰ درصد تخفیف! همین حالا خرید کنید
-Answer: advertisement
+Text: مراسم تشییع و عزاداری در حرم برگزار شد
+Answer: culture_art
 
 Text: بهترین دوره آموزش زبان انگلیسی؛ برای ثبت‌نام با شماره زیر تماس بگیرید
 Answer: advertisement
 
-Text: با بیمه عمر شرکت ما، آینده خانواده‌تان را تضمین کنید
-Answer: advertisement"""
+Text: سارقان مسلح بانک پس از تعقیب پلیس دستگیر شدند
+Answer: social
+
+Text: شرکت فناوری مدل جدید هوش مصنوعی خود را معرفی کرد
+Answer: science_tech
+
+CRITICAL RULES:
+- Output ONLY the exact category name in English, lowercase.
+- No explanations, punctuation, or extra words.
+"""
 
 
 def classify_news(news_text: str) -> NewsCategory | None:
@@ -61,19 +67,21 @@ def classify_news(news_text: str) -> NewsCategory | None:
     if not news_text_strip:
         return None
 
-    """متن خبر را دریافت و دسته‌بندی آن را برمی‌گرداند."""
-    response = open_ai_client.chat.completions.create(
-        model=OPEN_AI_MODEL_NAME,
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": f"Text: {news_text_strip}\nAnswer:"},
-        ],
-        temperature=0.0,  # حداکثر قطعیت، مهم برای classification
-        max_tokens=10,  # فقط نام دسته لازم است
-    )
+    try:
+        response = open_ai_client.chat.completions.create(
+            model=OPEN_AI_MODEL_NAME,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": f"Text: {news_text_strip}\nAnswer:"},
+            ],
+            temperature=0.0,  # حداکثر قطعیت، مهم برای classification
+            max_tokens=10,  # فقط نام دسته لازم است
+        )
 
-    raw_output = response.choices[0].message.content.strip()
-    return _parse_category(raw_output)
+        raw_output = response.choices[0].message.content.strip()
+        return _parse_category(raw_output)
+    except Exception as e:
+        return f"خطا در ارتباط با مدل: {e}"
 
 
 def _parse_category(raw_output: str) -> NewsCategory:

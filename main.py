@@ -5,7 +5,8 @@ from news_collector import fetch_new_posts
 from news_summarizer import summarize_news_posts
 
 POLL_INTERVAL = 120  # ثانیه
-SUMMARIZE_BATCH = 5
+SUMMARIZE_BATCH = 3
+BALE_POST_LINK_TEMPLATE = "https://ble.ir/akharinkhabar/{post_id}"
 IMPORTANT_CATEGORIES: list[NewsCategory] = [NewsCategory.WAR_CONFLICT, NewsCategory.POLITICS, NewsCategory.ECONOMY,
                                             NewsCategory.SCIENCE_TECH, NewsCategory.UNKNOWN]
 
@@ -13,13 +14,20 @@ IMPORTANT_CATEGORIES: list[NewsCategory] = [NewsCategory.WAR_CONFLICT, NewsCateg
 def summarize_in_batches(news_posts: list[NewsPost]):
     summary_list = []
     while news_posts:
-        batch = news_posts[:5]
-        concat_text = "\n".join([p.text for p in batch])
+        batch = news_posts[:SUMMARIZE_BATCH]
+
+        concat_text = "\n\n***\n\n".join([p.text for p in batch])
         summary = summarize_news_posts(concat_text)
+        summary += "\n\n\n"
+        for p in batch:
+            separator_index = p.sid.index("-", 1)
+            post_id = p.sid[:separator_index] + "/" + p.sid[separator_index + 1:]
+            summary += BALE_POST_LINK_TEMPLATE.format(post_id=post_id) + "\n"
+
         print(summary)
-        print("+" * 40)
+        print('=' * 50)
         summary_list.append(summary)
-        news_posts = news_posts[5:]
+        news_posts = news_posts[SUMMARIZE_BATCH:]
     return summary_list
 
 

@@ -22,7 +22,7 @@ def summarize_and_send(important_batch: list[NewsPost]):
         post_id = p.sid[:separator_index] + "/" + p.sid[separator_index + 1:]
         summary += BALE_POST_LINK_TEMPLATE.format(post_id=post_id) + "\n"
 
-    print('=' * 30 + ' SUMMARY-TO-SEND ' + '=' * 30)
+    print('=' * 40 + ' SUMMARY-TO-SEND ' + '=' * 40)
     print(summary)
     send_message(summary)
 

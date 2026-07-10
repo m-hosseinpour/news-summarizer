@@ -42,6 +42,7 @@ def parse_messages(html: str):
     messages = soup.find_all(
         'div', class_=lambda x: x and x.startswith('MessageItem_messageWrapper')
     )
+    messages = reversed(messages)
 
     news_posts: list[NewsPost] = []
     for msg in messages:
@@ -54,7 +55,7 @@ def parse_messages(html: str):
         normalized_text = normalize_news_text(text.strip())
 
         new_post = NewsPost(sid=sid, text=normalized_text, category=classify_news(normalized_text))
-        print('─' * 20 + ' NEW-POST ' + '─' * 20)
+        print('─' * 30 + ' NEW-POST ' + '─' * 30)
         print(f"[ {new_post.category.value if new_post.category else None} ]")
         print(new_post.text[:200])
         print(f"🆔 {new_post.sid}")
@@ -118,7 +119,7 @@ def fetch_new_posts(seen_sids: list[str]):
         if new_posts:
             print(f"🆕 {len(new_posts)} پست جدید:")
 
-        return new_posts
+        return reversed(new_posts)
     finally:
         if selenium_driver:
             selenium_driver.quit()

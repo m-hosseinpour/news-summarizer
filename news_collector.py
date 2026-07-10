@@ -6,13 +6,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from model import NewsPost, NewsCategory
 
+from model import NewsPost
 from news_classifier import classify_news
-from utils import load_posts, save_posts
 
 CHANNEL_URL = 'https://ble.ir/s/akharinkhabar'  # آدرس کانال
-MAX_SCROLLS = 5  # سقف اسکرول برای جلوگیری از حلقه بی‌نهایت
+MAX_SCROLLS = 50  # سقف اسکرول برای جلوگیری از حلقه بی‌نهایت
 SCROLL_PAUSE = 2  # مکث بعد از هر اسکرول برای لود شدن پیام‌ها
 
 selenium_driver = None
@@ -54,11 +53,13 @@ def parse_messages(html: str):
         text = text_elem.get_text(separator='\n', strip=True) if text_elem else ''
         normalized_text = normalize_news_text(text.strip())
 
-        news_posts.append(NewsPost(
-            sid=sid,
-            text=normalized_text,
-            category=classify_news(normalized_text)
-        ))
+        new_post = NewsPost(sid=sid, text=normalized_text, category=classify_news(normalized_text))
+        print('─' * 20 + ' NEW-POST ' + '─' * 20)
+        print(f"[ {new_post.category.value if new_post.category else None} ]")
+        print(new_post.text[:200])
+        print(f"🆔 {new_post.sid}")
+
+        news_posts.append(new_post)
     return news_posts
 
 

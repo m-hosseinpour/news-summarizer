@@ -1,6 +1,8 @@
 from config import OPEN_AI_MODEL_NAME
-from model import NewsCategory
+from model import NewsCategory, NewsPost
 from open_ai_client_provider import open_ai_client
+
+BALE_POST_LINK_TEMPLATE = "https://ble.ir/akharinkhabar/{post_id}"
 
 SYSTEM_PROMPT = """تو یک خلاصه‌ساز حرفه‌ای اخبار فارسی هستی.
 متنی که کاربر می‌فرسته شامل چندین خبر است که پشت سر هم قرار دارند.
@@ -34,6 +36,20 @@ def summarize_news_posts(news_text: str) -> NewsCategory | None:
     except Exception as e:
         print(f"خطا در ارتباط با مدل: {e}")
         raise e
+
+
+def summarize_and_post_links(news_batch: list[NewsPost]):
+    concat_text = "\n\n***\n\n".join([p.text for p in news_batch])
+    summary = summarize_news_posts(concat_text)
+    summary += "\n\n\n"
+    for p in news_batch:
+        separator_index = p.sid.index("-", 1)
+        post_id = p.sid[:separator_index] + "/" + p.sid[separator_index + 1:]
+        summary += BALE_POST_LINK_TEMPLATE.format(post_id=post_id) + "\n"
+
+    print('=' * 50 + ' SUMMARY-TO-SEND ' + '=' * 50)
+    print(summary)
+    return summary
 
 
 # تست

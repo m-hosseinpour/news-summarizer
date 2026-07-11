@@ -4,27 +4,12 @@ from bale_bot_message_sender import send_message
 from config import SUMMARIZE_BATCH
 from model import NewsPost, NewsCategory
 from news_collector import fetch_new_posts
-from news_summarizer import summarize_news_posts
+from news_summarizer import summarize_and_post_links
 from utils import load_posts, save_posts
 
 POLL_INTERVAL = 120  # ثانیه
-BALE_POST_LINK_TEMPLATE = "https://ble.ir/akharinkhabar/{post_id}"
 IMPORTANT_CATEGORIES: list[NewsCategory] = [NewsCategory.WAR_CONFLICT, NewsCategory.POLITICS, NewsCategory.ECONOMY,
                                             NewsCategory.SCIENCE_TECH, NewsCategory.UNKNOWN]
-
-
-def summarize_and_send(important_batch: list[NewsPost]):
-    concat_text = "\n\n***\n\n".join([p.text for p in important_batch])
-    summary = summarize_news_posts(concat_text)
-    summary += "\n\n\n"
-    for p in important_batch:
-        separator_index = p.sid.index("-", 1)
-        post_id = p.sid[:separator_index] + "/" + p.sid[separator_index + 1:]
-        summary += BALE_POST_LINK_TEMPLATE.format(post_id=post_id) + "\n"
-
-    print('=' * 50 + ' SUMMARY-TO-SEND ' + '=' * 50)
-    print(summary)
-    send_message(summary)
 
 
 def monitor_channel(seen_sids):
@@ -51,11 +36,14 @@ if __name__ == '__main__':
             important_batch.append(new_post)
 
         if len(important_batch) >= SUMMARIZE_BATCH:
-            summarize_and_send(important_batch)
+            summary = summarize_and_post_links(important_batch)
+            send_message(summary)
+
             important_batch = []
             save_posts(all_posts)
 
     if important_batch:
-        summarize_and_send(important_batch)
+        summary = summarize_and_post_links(important_batch)
+        send_message(summary)
 
     save_posts(all_posts)

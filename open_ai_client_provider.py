@@ -1,8 +1,8 @@
 from openai import OpenAI
 
-OPEN_AI_MODEL_NAME = "qwen3:4b-instruct"
+from config import OPEN_AI_BASE_URL, OPEN_AI_API_KEY
 
 open_ai_client = OpenAI(
-    base_url="http://localhost:11434/v1",
-    api_key="ollama",
+    base_url=OPEN_AI_BASE_URL,
+    api_key=OPEN_AI_API_KEY,
 )

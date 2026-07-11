@@ -1,6 +1,6 @@
+from config import OPEN_AI_MODEL_NAME
 from model import NewsCategory
-
-from open_ai_client_provider import open_ai_client, OPEN_AI_MODEL_NAME
+from open_ai_client_provider import open_ai_client
 
 SYSTEM_PROMPT = """تو یک خلاصه‌ساز حرفه‌ای اخبار فارسی هستی.
 متنی که کاربر می‌فرسته شامل چندین خبر است که پشت سر هم قرار دارند.

@@ -1,13 +1,13 @@
 import time
 
 from bale_bot_message_sender import send_message
+from config import SUMMARIZE_BATCH
 from model import NewsPost, NewsCategory
 from news_collector import fetch_new_posts
 from news_summarizer import summarize_news_posts
 from utils import load_posts, save_posts
 
 POLL_INTERVAL = 120  # ثانیه
-SUMMARIZE_BATCH = 3
 BALE_POST_LINK_TEMPLATE = "https://ble.ir/akharinkhabar/{post_id}"
 IMPORTANT_CATEGORIES: list[NewsCategory] = [NewsCategory.WAR_CONFLICT, NewsCategory.POLITICS, NewsCategory.ECONOMY,
                                             NewsCategory.SCIENCE_TECH, NewsCategory.UNKNOWN]

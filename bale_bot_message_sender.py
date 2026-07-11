@@ -1,13 +1,12 @@
 import requests
 
-TOKEN = ""
-CHAT_ID = 0
+from config import BALE_BOT_TOKEN, BALE_BOT_CHAT_ID
 
 def send_message(text):
     resp = requests.post(
-        f"https://tapi.bale.ai/bot{TOKEN}/sendMessage",
+        f"https://tapi.bale.ai/bot{BALE_BOT_TOKEN}/sendMessage",
         json={
-            "chat_id": CHAT_ID,
+            "chat_id": BALE_BOT_CHAT_ID,
             "text": text,
         },
     )

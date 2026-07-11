@@ -7,12 +7,9 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+from config import CHANNEL_URL, MAX_SCROLLS, SCROLL_PAUSE
 from model import NewsPost
 from news_classifier import classify_news
-
-CHANNEL_URL = 'https://ble.ir/s/akharinkhabar'  # آدرس کانال
-MAX_SCROLLS = 50  # سقف اسکرول برای جلوگیری از حلقه بی‌نهایت
-SCROLL_PAUSE = 2  # مکث بعد از هر اسکرول برای لود شدن پیام‌ها
 
 selenium_driver = None
 

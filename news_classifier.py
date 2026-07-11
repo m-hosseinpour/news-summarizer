@@ -1,6 +1,6 @@
+from config import OPEN_AI_MODEL_NAME
 from model import NewsCategory
-
-from open_ai_client_provider import open_ai_client, OPEN_AI_MODEL_NAME
+from open_ai_client_provider import open_ai_client
 
 # پرامپت سیستمی (بهینه برای مدل‌های ضعیف)
 # نکته: برای مدل‌های ضعیف، پرامپت باید کوتاه، ساختارمند و با مثال باشد

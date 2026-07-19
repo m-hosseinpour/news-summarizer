@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 CHANNEL_URL = os.getenv("CHANNEL_URL", "https://ble.ir/s/akharinkhabar")
-MAX_SCROLLS = int(os.getenv("MAX_SCROLLS", "50"))
+MAX_SCROLLS = int(os.getenv("MAX_SCROLLS", "500"))
 SCROLL_PAUSE = int(os.getenv("SCROLL_PAUSE", "2"))
 
 BALE_BOT_TOKEN = os.getenv("BALE_BOT_TOKEN")

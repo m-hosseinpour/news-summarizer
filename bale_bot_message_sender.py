@@ -10,4 +10,7 @@ def send_message(text):
             "text": text,
         },
     )
-    print(resp.json())
+    resp_json = resp.json()
+    print(resp_json)
+    if (not resp_json["ok"]):
+        raise Exception("Error sending message with bale bot")
